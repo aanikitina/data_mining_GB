@@ -65,7 +65,7 @@ class AvitoParser:
                 time.sleep(random.randint(1, 3))
 
             results.extend(page_flats)
-            print(self.next, len(results))
+            print(self.entry_url, len(results))
 
         return results
 
@@ -83,7 +83,7 @@ class AvitoParser:
         result = {'title': soup.body.find('span', attrs={'class': 'title-info-title-text'}).text,
                   'price': int(price) if price and price.isdigit else None,
                   'url': response.url,
-                  'params': [tuple(itm.text.split(':')) for itm in
+                  'params': [tuple(itm.text.split(': ')) for itm in
                              soup.body.findAll('li', attrs={'class': 'item-params-list-item'})]
                   }
 
@@ -95,7 +95,7 @@ class AvitoParser:
                 for itm in flat_urls:
                     time.sleep(random.randint(1, 4))
                     flat = self.get_flat(itm)
-                    print(flat)
+                    # print(flat)
                     collection.insert_one(flat)
                 print(f'{len(flat_urls)} flats written to {collection}')
             else:
@@ -114,13 +114,12 @@ class AvitoParser:
 
 
 
+if __name__ == '__main__':
+    parser = AvitoParser()
 
-parser = AvitoParser()
+    parser.parse_flats(f'{ENTRY_URL}', collection)
+    # flat = parser.get_flat('https://www.avito.ru/moskva/kvartiry/3-k_kvartira_78.1_m_1617_et._1542337330')
+    # parser.parse_flats(f'{ENTRY_URL}?p=98', collection)  # to specify start page
 
-# flat = parser.get_flat('https://www.avito.ru/moskva/kvartiry/3-k_kvartira_78.1_m_1617_et._1542337330')
-
-parser.parse_flats(f'{ENTRY_URL}?p=98', collection)
-# flat_url_list = parser.get_pages(f'{ENTRY_URL}?p=98')
-# flat_url_list = parser.get_pages(ENTRY_URL)
 
 print(1)
