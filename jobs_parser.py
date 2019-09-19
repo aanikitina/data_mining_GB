@@ -1,11 +1,6 @@
-import json
 import requests
 from pymongo import MongoClient, errors
 from bs4 import BeautifulSoup
-import re
-import time
-import random
-
 
 
 # constants
@@ -24,6 +19,7 @@ SJ_MAIN_URL = 'https://www.superjob.ru'
 query_str = input('query:')
 hh_entry_url = f'{HH_MAIN_URL}/search/vacancy?area=1&st=searchVacancy&text={query_str}'
 sj_entry_url = f'{SJ_MAIN_URL}/vacancy/search/?keywords={query_str}'
+
 
 class JobParser:
 
@@ -70,22 +66,16 @@ class JobParser:
 
         return job
 
-
     def get_sj_job(self, job_tag):
-
-        # body = self.get_body(job_url)
 
         min_comp = max_comp = None
 
-        info_tag = ''
         url = f"{SJ_MAIN_URL}{job_tag.find('a', attrs={'class': ['_1QIBo']}).attrs['href']}"
         title = job_tag.find('div', attrs={'class': '_3mfro CuJz5 PlM3e _2JVkc _3LJqf'}).text
-
 
         try:
             comp_tag = job_tag.find('span', attrs={'class': 'f-test-text-company-item-salary'})
             comp_str = ''.join([_.text.replace('\xa0', '') for _ in comp_tag.findAll('span')]).strip('₽')
-
 
             if len(comp_str.split('—')) > 1:
                 min_comp, max_comp = comp_str.split('—')
@@ -102,7 +92,6 @@ class JobParser:
                }
 
         return job
-
 
 
     def get_page_list(self, source, entry_url):
@@ -132,16 +121,14 @@ class JobParser:
         job_list = []
 
         for attrs in item_qattrs_list:
-            print(attrs)
+            # print(attrs)
             job_list.extend(body.findAll(item_qtag, attrs=attrs))
-            print(len(job_list))
+            # print(len(job_list))
 
         if source == 'hh':
             jobs = [self.get_hh_job(_) for _ in job_list]
-        elif source == 'sj':
-            # job_list = json.loads(job_list[0].contents[0])['itemListElement']
-            # job_list = [_['url'] for _ in job_list]
 
+        elif source == 'sj':
             jobs = [self.get_sj_job(_) for _ in job_list]
 
         try:
@@ -155,12 +142,13 @@ class JobParser:
         return jobs, next_url
 
     def paginate(self, page_lim, source, entry_url):
+        """ Returns searching entities result list for several pages"""
         jobs = []
         i = 0
 
         self.next = entry_url
         while True:
-            if (self.next) and (i < page_lim):
+            if self.next and (i < page_lim):
                 new_jobs, self.next = self.get_page_list(source, self.next)
                 jobs.extend(new_jobs)
                 i += 1
@@ -168,20 +156,33 @@ class JobParser:
                 break
         return jobs
 
-
     def parse_jobs(self, hh_pages=1000, sj_pages=1000):
-        jobs = []
 
-        jobs.extend(parser.paginate(sj_pages, 'sj', sj_entry_url))
-        print('sj done')
-        jobs.extend(parser.paginate(hh_pages, 'hh', hh_entry_url))
-        print('hh done')
+        jobs = []
+        jobs.extend(self.paginate(sj_pages, 'sj', sj_entry_url))
+        print('sj parsing completed')
+        jobs.extend(self.paginate(hh_pages, 'hh', hh_entry_url))
+        print('hh parsing completed')
 
         return jobs
 
 
-parser = JobParser()
-jobs = parser.parse_jobs(hh_pages=2)
+def dict_to_mongo(res_list, collection):
+    try:
+        if res_list:
+            collection.insert_many(res_list)
+        else:
+            print('Empty set')
 
-print('END')
+    except errors.ServerSelectionTimeoutError as err:
+        # check that mongo is alive
+        print(f'DB IMPORT ERROR occurred: {err}')
+
+
+parser = JobParser()
+jobs = parser.parse_jobs()
+
+print(f'Jobs extracted: {len(jobs)}')
+dict_to_mongo(jobs, collection)
+
 print(1)

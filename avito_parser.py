@@ -102,7 +102,7 @@ class AvitoParser:
                 print('Empty set')
 
         except errors.ServerSelectionTimeoutError as err:
-            # check that mongo alive
+            # check that mongo is alive
             print(f'DB IMPORT ERROR occurred: {err}')
 
 
